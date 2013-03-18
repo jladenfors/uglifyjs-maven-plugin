@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.Arrays;
 import java.util.Collection;
 
 import org.apache.commons.io.FileUtils;
@@ -23,83 +24,98 @@ import org.mozilla.javascript.ScriptableObject;
  *
  */
 public class UglifyMojo extends AbstractMojo {
-	private static final String[] JS_EXTENSIONS = {"js"};
+    private static final String[] JS_EXTENSIONS = {"js"};
 
-	/**
-	 * @parameter expression="${encoding}" default-value="UTF-8"
-	 */
-	private String encoding = "UTF-8";
+    /**
+     * @parameter expression="${encoding}" default-value="UTF-8"
+     */
+    private String encoding = "UTF-8";
 
-	/**
-	 * @required
-	 * @parameter expression="${sourceDirectory}"
-	 */
-	protected File sourceDirectory;
+    /**
+     * @parameter expression="${sourceDirectory}"
+     */
+    protected File sourceDirectory;
 
-	/**
-	 * @parameter expression="${outputDirectory}"
-	 */
-	protected File outputDirectory;
+    /**
+     * @parameter alias="${sourceFiles}"
+     */
+    protected File [] sourceFiles;
 
-	class JavascriptContext {
-		final Context cx = Context.enter();
-		final ScriptableObject global = cx.initStandardObjects();
+    /**
+     * @parameter expression="${outputDirectory}"
+     */
+    protected File outputDirectory;
 
-		JavascriptContext( String... scripts ) throws IOException {
-			ClassLoader cl = getClass().getClassLoader();
-			for( String script : scripts ) {
-				InputStreamReader in = new InputStreamReader(cl.getResourceAsStream("script/" + script));
-				cx.evaluateReader( global, in, script, 1, null);
-				IOUtils.closeQuietly( in );
-			}
-		}
+    class JavascriptContext {
+        final Context cx = Context.enter();
+        final ScriptableObject global = cx.initStandardObjects();
 
-		String executeCmdOnFile( String cmd, File file ) throws IOException {
-			String data = FileUtils.readFileToString( file, "UTF-8" );
-			ScriptableObject.putProperty( global, "data", data);
-			return cx.evaluateString( global, cmd + "(String(data));", "<cmd>", 1, null).toString();
-		}
-	}
+        JavascriptContext( String... scripts ) throws IOException {
+            ClassLoader cl = getClass().getClassLoader();
+            for( String script : scripts ) {
+                InputStreamReader in = new InputStreamReader(cl.getResourceAsStream("script/" + script));
+                cx.evaluateReader( global, in, script, 1, null);
+                IOUtils.closeQuietly( in );
+            }
+        }
 
-	public void execute() throws MojoExecutionException, MojoFailureException {
-		if (outputDirectory == null)
-			throw new MojoExecutionException( "outputDirectory is not specified." );
+        String executeCmdOnFile( String cmd, File file ) throws IOException {
+            String data = FileUtils.readFileToString( file, "UTF-8" );
+            ScriptableObject.putProperty( global, "data", data);
+            return cx.evaluateString( global, cmd + "(String(data));", "<cmd>", 1, null).toString();
+        }
+    }
 
-		try {
-			int count = uglify( sourceDirectory );
-			getLog().info( "Uglified " + count + " file(s)." );
-		} catch(IOException e) {
-			throw new MojoExecutionException("Failure to precompile handlebars templates.", e);
-		}
-	}
+    public void execute() throws MojoExecutionException, MojoFailureException {
+        if (outputDirectory == null)
+            throw new MojoExecutionException( "outputDirectory is not specified." );
 
-	protected int uglify( File directory ) throws IOException {
-		Collection<File> jsFiles = FileUtils.listFiles(directory, JS_EXTENSIONS, true);
-		int count = 0;
+        try {
+            if (sourceFiles != null){
+                int count = uglify(Arrays.asList(sourceFiles));
+                getLog().info( "Uglified " + count + " file(s)." );
+            }else {
+                int count = uglify( FileUtils.listFiles(sourceDirectory, JS_EXTENSIONS, true));
+                getLog().info( "Uglified " + count + " file(s)." );
+            }
 
-		OutputStreamWriter out = null;
-		for (File jsFile : jsFiles) {
-			try {
-				String output = new JavascriptContext("uglifyjs.js", "uglifyJavascript.js").executeCmdOnFile( "uglifyJavascript", jsFile );
-				out = new OutputStreamWriter( new FileOutputStream(getOutputFile(jsFile), false), encoding);
-				out.write(output);
-			} catch( IOException e ) {
-				getLog().error( "Could not uglify '" + jsFile.getPath() + "'.", e );
-				throw e;
-			} finally {
-				Context.exit();
-				IOUtils.closeQuietly(out);
-			}
-			count+=1;
-		}
-		return count;
-	}
+        } catch(IOException e) {
+            throw new MojoExecutionException("Failure to precompile handlebars templates.", e);
+        }
+    }
 
-	private final File getOutputFile(File inputFile) throws IOException {
-		String relativePath = sourceDirectory.toURI().relativize(inputFile.getParentFile().toURI()).getPath();
-		File outputBaseDir = new File(outputDirectory, relativePath);
-		if (!outputBaseDir.exists())
-			FileUtils.forceMkdir(outputBaseDir);
-		return new File(outputBaseDir, inputFile.getName());
-	}
+    protected int uglify( Collection<File> jsFiles ) throws IOException {
+        int count = 0;
+
+        OutputStreamWriter out = null;
+        for (File jsFile : jsFiles) {
+            try {
+                String output = new JavascriptContext("uglifyjs.js", "uglifyJavascript.js").executeCmdOnFile( "uglifyJavascript", jsFile );
+                out = new OutputStreamWriter( new FileOutputStream(getOutputFile(jsFile), false), encoding);
+                out.write(output);
+            } catch( IOException e ) {
+                getLog().error( "Could not uglify '" + jsFile.getPath() + "'.", e );
+                throw e;
+            } finally {
+                Context.exit();
+                IOUtils.closeQuietly(out);
+            }
+            count+=1;
+        }
+        return count;
+    }
+
+    private final File getOutputFile(File inputFile) throws IOException {
+        File outputBaseDir;
+        if (sourceDirectory != null) {
+            String relativePath = sourceDirectory.toURI().relativize(inputFile.getParentFile().toURI()).getPath();
+		    outputBaseDir = new File(outputDirectory, relativePath);
+        }
+        else {
+            outputBaseDir = outputDirectory;
+        }
+        if (!outputBaseDir.exists())
+            FileUtils.forceMkdir(outputBaseDir);
+        return new File(outputBaseDir, inputFile.getName());
+    }
 }

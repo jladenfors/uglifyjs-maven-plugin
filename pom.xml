@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>net.tqh.plugins</groupId>
 	<artifactId>uglifyjs-maven-plugin</artifactId>
-	<version>1.0</version>
+	<version>1.0.1</version>
 	<name>uglifyjs-maven-plugin</name>
 	<packaging>maven-plugin</packaging>
 	<url>https://github.com/tqh/uglifyjs-maven-plugin/</url>
