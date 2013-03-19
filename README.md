@@ -20,7 +20,7 @@ uglifyjs:uglify      |Compress javascript files
 ### uglifyjs:uglify
 
 Full name
-:net.tqh.plugins:uglifyjs-maven-plugin:1.0:uglify
+:net.tqh.plugins:uglifyjs-maven-plugin:1.0.1:uglify
 
 Description
 :uglify Run uglifyJS on files in sourceDirectory.
