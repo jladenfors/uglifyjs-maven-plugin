@@ -37,6 +37,11 @@ public class UglifyMojo extends AbstractMojo {
     protected File sourceDirectory;
 
     /**
+     * @parameter expression="${uglifySuffix}"
+     */
+    protected String uglifySuffix = "";
+    
+    /**
      * @parameter alias="${sourceFiles}"
      */
     protected File [] sourceFiles;
@@ -116,6 +121,19 @@ public class UglifyMojo extends AbstractMojo {
         }
         if (!outputBaseDir.exists())
             FileUtils.forceMkdir(outputBaseDir);
-        return new File(outputBaseDir, inputFile.getName());
+        return new File(outputBaseDir, addSuffix(inputFile.getName()));
+    }
+
+    /**
+     * Add an optional suffix to the filename. 
+     * @param filename the current filename
+     * @return the filename with the suffix if it is not null or empty.
+     */
+    private String addSuffix(String filename){
+        StringBuffer sb = new StringBuffer();
+        sb.append(filename.substring(0, filename.lastIndexOf(".")));
+        sb.append((uglifySuffix != null && !uglifySuffix.equals("")) ? "." + uglifySuffix : "" );
+        sb.append(".").append(JS_EXTENSIONS[0]);
+        return  sb.toString();        
     }
 }
