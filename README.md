@@ -32,6 +32,8 @@ Name             |Type   |Description
 sourceDirectory  |String |The directory of javascript files.
 outputDirectory  |String |The output directory to put uglified files
 encoding         |String |charset of javascript files.
+uglifySuffix     |String |Output filename suffix (eg. min)
+sourceFiles      |List   |Specify individual files instead of a complete source directory
 
 Repo
 ----
